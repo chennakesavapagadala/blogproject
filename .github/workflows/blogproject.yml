@@ -45,6 +45,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until nc -z db 5432; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          
       - name: Run migrations
         env:
           DATABASE_URL: postgres://postgres:834000@localhost:5432/blog_db
