@@ -1,0 +1,71 @@
+
+services:
+  # Django application service
+  web:
+    build: .
+    command: ["/start.sh"]
+    volumes:
+      - .:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0 
+    networks:
+      - blogproject_network
+
+  # PostgreSQL database service
+  db:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=blog_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=834000
+    networks:
+      - blogproject_network
+
+  # Redis service for Celery
+  redis:
+    image: redis:latest
+    networks:
+      - blogproject_network
+
+  # Celery worker service
+  celery:
+    build: .
+    command: ["celery", "-A", "blogproj", "worker", "--loglevel=info"]
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0 
+    networks:
+      - blogproject_network
+
+  # Celery beat service (for periodic tasks)
+  celery-beat:
+    build: .
+    command: ["celery", "-A", "blogproj", "beat", "--loglevel=info"]
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    networks:
+      - blogproject_network
+
+volumes:
+  postgres_data: {}
+  static_volume:
+  media_volume:
+
+networks:
+  blogproject_network:
+    driver: bridge
